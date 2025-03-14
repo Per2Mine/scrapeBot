@@ -7,7 +7,7 @@ const puppeteer_extra_1 = __importDefault(require("puppeteer-extra"));
 const puppeteer_extra_plugin_stealth_1 = __importDefault(require("puppeteer-extra-plugin-stealth"));
 const node_notifier_1 = __importDefault(require("node-notifier"));
 const ARTIKEL_NAME = "Radeon RX 9070 XT";
-const MINDEST_PREIS = 1200;
+const MINDEST_PREIS = 890;
 const CHECK_INTERVAL = 10000;
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 /**
@@ -16,10 +16,9 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 async function scrapeSite() {
     puppeteer_extra_1.default.use((0, puppeteer_extra_plugin_stealth_1.default)());
     const browser = await puppeteer_extra_1.default.launch({ headless: true, args: ['--disable-blink-features=AutomationControlled'] });
-    await delay(2000);
     let trackedProducts = [];
-    // TODO bisherige seiten die funktionieren sind [Alternate, Caseking, Reichelt, Cyberport, OfficePartner, Notebook, Computeruniverse]
-    const scrapers = [scrapeCyberport, scrapeReichelt, scrapeCaseking, scrapeOfficePartner, scrapeComputeruniverse, scrapeAlternate, scrapeNotebook]; // <- Füge hier neue Seiten hinzu!
+    // TODO bisherige seiten die funktionieren sind [Alternate, Caseking, Reichelt, Cyberport, OfficePartner, Computeruniverse]
+    const scrapers = [scrapeOfficePartner, scrapeAlternate, scrapeCaseking, scrapeCyberport, scrapeReichelt, scrapeComputeruniverse]; // <- Füge hier neue Seiten hinzu!
     try {
         while (true) {
             let allProducts = [];
@@ -33,7 +32,7 @@ async function scrapeSite() {
                     continue;
                 }
             }
-            console.log(allProducts);
+            //console.log(allProducts);
             const newProducts = allProducts
                 .filter(p => validateProduct(p, MINDEST_PREIS, ARTIKEL_NAME))
                 .filter(p => !trackedProducts.some(existing => existing.title === p.title));
@@ -57,7 +56,7 @@ async function scrapeSite() {
  * Überprüft, ob ein Produkt den Kriterien entspricht.
  */
 function validateProduct(product, maxPrice, productName) {
-    return (product.title.includes(productName) || product.title.includes(" Radeon RX9070 XT")) && product.price <= maxPrice && product.availability;
+    return (product.title.includes(productName) || product.title.includes(" Radeon RX9070 XT") || product.title.includes(" Radeon RX 9070XT")) && product.price <= maxPrice && product.availability;
 }
 /**
  * Preis-Parser, der Euro-Preise korrekt in Zahlen umwandelt.
@@ -97,6 +96,17 @@ async function setFakeValueToPage(page) {
     await page.setExtraHTTPHeaders({
         'X-Forwarded-For': '52.5200,13.4050'
     });
+    await page.setCookie({
+        name: 'session',
+        value: 'abc123',
+        domain: 'example.com',
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Strict'
+    }
+    // Du kannst auch mehrere Cookies als Array übergeben
+    );
 }
 async function scrapeAlternate(browser) {
     const page = await browser.newPage();
@@ -165,6 +175,7 @@ async function scrapeGalaxus(browser) {
         console.log("Something went wrong with scrapeGalaxus \n" + e);
     }
 }
+let toggle2 = false;
 async function scrapeComputeruniverse(browser) {
     try {
         const page = await browser.newPage();
@@ -173,8 +184,11 @@ async function scrapeComputeruniverse(browser) {
         await page.waitForSelector("#search-input");
         await page.type("#search-input", ARTIKEL_NAME);
         await page.keyboard.press("Enter");
-        await page.waitForSelector("#consent-accept");
-        await page.click("#consent-accept");
+        if (!toggle2) {
+            await page.waitForSelector("#consent-accept");
+            await page.click("#consent-accept");
+            toggle2 = true;
+        }
         await delay(4000);
         await page.waitForSelector(".price-box__current-price__price__price");
         const products = await page.evaluate(() => {
